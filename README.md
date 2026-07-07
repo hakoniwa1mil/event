@@ -2,7 +2,7 @@
 
 **お題: 参加するイベントで最大の収穫を得よう!**
 
-イベント参加前に質問へ答えていくだけで、AI (Claude) があなた専用の「準備キット」を生成するWebアプリです。
+主催者がイベントURLを発行し、参加者はそのURLを開いて質問に答えるだけ。AI (Claude) があなた専用の「準備キット」を生成するWebアプリです。
 
 ## 解決したい後悔
 
@@ -10,36 +10,43 @@
 - 事前準備がなく「ただ参加しただけ」になった
 - 収穫 = 「自分の人生を前に進めるための知見」を得られなかった
 
-## 生成されるもの
+## 使い方の流れ
 
-| 出力 | 解決する課題 |
-|---|---|
-| キャッチフレーズ + 自己紹介 (15秒版 / 1分版) | 覚えてもらえない・インパクトがない |
-| 「このイベントで答えを見つけたい問い」×3 | 準備なしで参加しただけになる |
-| 質問カード (相手 × 質問 × 第一声) | 話しかけたいけど話しかけられない |
-| 直前に読み返す応援メッセージ | 当日の勇気 |
+1. **主催者**: `/create` でイベント名・内容を登録 → 共有URL (`/e/<id>`) を発行して参加者に配布
+2. **参加者**: 共有URLを開き、Xの名前・ID・アイコンを登録して質問に回答
+3. AIが生成: キャッチフレーズ / 自己紹介 (15秒・1分) / 答えを見つけたい問い / 質問カード(第一声つき) / 応援メッセージ
+4. 入力と結果はSupabaseに保存され、当日スマホで見返せる
 
-入力と結果はブラウザの localStorage に保存されるので、当日スマホで開けばそのまま見返せます。
+## 技術構成
+
+- **Next.js (App Router)** — Vercelにデプロイ
+- **Claude API** (`claude-haiku-4-5`) — `@anthropic-ai/sdk` の `messages.parse` + Zod構造化出力。APIキーはサーバー側のみ
+- **Supabase** — イベント情報・参加者データの保存
 
 ## セットアップ
+
+### 1. Supabase
+
+1. [supabase.com](https://supabase.com) でプロジェクト作成 (無料枠でOK)
+2. ダッシュボードの **SQL Editor** で `supabase/schema.sql` の内容を実行
+3. **Settings > API** から `Project URL` と `service_role` キーを控える
+
+### 2. ローカル開発
 
 ```bash
 npm install
 cp .env.local.example .env.local
-# .env.local に ANTHROPIC_API_KEY を設定
+# .env.local に ANTHROPIC_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY を設定
 npm run dev
 ```
 
-http://localhost:3000 を開く。
+### 3. Vercelにデプロイ (共有用)
 
-## 技術構成
-
-- Next.js (App Router) + TypeScript
-- Claude API (`claude-opus-4-8`) — `@anthropic-ai/sdk` の `messages.parse` + Zod による構造化JSON出力
-- API ルート: `app/api/generate/route.ts`
+1. [vercel.com](https://vercel.com) でGitHubリポジトリをインポート
+2. **Environment Variables** に上記3つを設定
+3. Deploy → 発行されたURLの `/create` からイベントを作成
 
 ## 今後の拡張アイデア
 
-- 複数人参加の掲示板モード: 参加者のアイコンに矢印を向けて「〇〇さんがこんな質問をしたいと言っています」を可視化
-- 生成した準備キットの共有URL発行 (事前にSNSでシェア)
+- 参加者一覧ページ: アイコンに矢印を向けて「〇〇さんがこんな質問をしたいと言っています」を可視化 (データは既にSupabaseに保存済み)
 - イベント後の振り返り: 問いに対する答えが得られたかを記録
