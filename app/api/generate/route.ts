@@ -7,19 +7,28 @@ import { getSupabase } from "@/lib/supabase";
 export const maxDuration = 120;
 
 const PrepResultSchema = z.object({
-  selfIntroShort: z
-    .string()
+  takeaway: z
+    .object({
+      statement: z
+        .string()
+        .describe(
+          "このイベントで必ず持ち帰るべきことを一言で宣言する(30字以内目安)。欲張らず一つに絞る。簡潔・具体的に"
+        ),
+      note: z
+        .string()
+        .describe("なぜそれが本人の人生を前に進めるのかの補足。1行で"),
+    })
     .describe(
-      "交流会で口頭で言える15秒程度の自己紹介。名前から始まり、相手が思わず質問したくなるフックを1つ含める"
-    ),
-  selfIntroLong: z
-    .string()
-    .describe(
-      "1分程度の自己紹介。頑張っていること・始めたこと・困っていることを織り込み、会話のきっかけを複数散りばめる"
+      "最重要アウトプット。「考えすぎてしまうこと」とAIによる本人分析(あれば)から導く、イベントで必ず持ち帰るべきただ一つのこと"
     ),
   hook: z
     .string()
     .describe("相手に覚えてもらうためのキャッチフレーズ的な一言(20字以内目安)"),
+  selfIntroShort: z
+    .string()
+    .describe(
+      "交流会で口頭で言える15秒程度の自己紹介。名前から始まり、「突拍子もないこと」をフックに使って相手が思わず質問したくなる形にする。話し言葉で"
+    ),
   insights: z
     .array(
       z.object({
@@ -28,16 +37,18 @@ const PrepResultSchema = z.object({
         how: z.string().describe("イベント中にどう動けばこの問いの答えに近づけるかの具体的アクション"),
       })
     )
-    .describe("イベントで得たい知見を「問い」として言語化したもの。3つ程度"),
+    .describe(
+      "「考えすぎてしまうこと」やAI分析から導いた、イベントで答えを見つけたい問い。2〜3個。takeawayを支える具体的なサブの問い"
+    ),
   questionCards: z
     .array(
       z.object({
         target: z.string().describe("話しかけたい相手(例: 登壇者の〇〇さん、地方で活動しているクリエイター)"),
         question: z.string().describe("その人にしたい具体的な質問"),
-        opener: z.string().describe("話しかける最初の一言の例。自然で勇気が出るもの"),
+        opener: z.string().describe("話しかける最初の一言の例。自然でハードルの低い話し言葉"),
       })
     )
-    .describe("質問カード。相手ごとに1枚"),
+    .describe("質問カード。相手ごとに1枚。2〜3枚"),
   encouragement: z
     .string()
     .describe("イベント直前に読み返す、本人への短い応援メッセージ"),
@@ -48,14 +59,11 @@ export type PrepResult = z.infer<typeof PrepResultSchema>;
 export interface PrepInput {
   xName: string;
   xId: string;
-  workingMain: string;
-  workingFun: string;
-  startedWhat: string;
-  startedWhy: string;
-  struggleWhat: string;
-  struggleAsk: string;
-  talkWho: string;
-  talkAsk: string;
+  surprise: string; // インパクト枠: 突拍子もないこと・驚かれたこと
+  challenge: string; // 自己アピール枠: 新しい挑戦
+  overthink: string; // 課題発見枠: つい考えすぎてしまうこと
+  wantToAsk: string; // 質問枠: この人にこれを聞いてみたい
+  aiSummary: string; // 他者視点枠: AIによる本人分析 (任意)
 }
 
 interface GenerateRequest {
@@ -71,10 +79,12 @@ const SYSTEM_PROMPT = `あなたはイベント参加準備のプロフェッシ
 ユーザーは「イベント参加での収穫 = 自分の人生を前に進めるための知見を得ること」と定義しており、
 過去に「話しかけたい人に話しかけられなかった」「準備なしで参加しただけになった」という後悔を持っています。
 
-ユーザーの回答をもとに、以下を生成してください:
-- インパクトのある自己紹介(短い版・長い版): 暗記調ではなく話し言葉。相手が質問したくなる「フック」を含める。Xの名前で名乗る
-- 得たい知見の言語化: 本人の状況から「このイベントで答えを見つけるべき問い」を導く。抽象論ではなく本人の言葉を使う
-- 質問カード: 話しかける勇気が出るよう、opener(第一声)は自然でハードルの低い話し言葉にする
+ユーザーの回答をもとに準備キットを生成してください:
+- takeaway(必ず持ち帰ること): 最重要。このイベントで得るべき収穫をただ一つに絞る。「つい考えすぎてしまうこと」とAIによる本人分析(あれば)を最も重視して導く。抽象的なスローガンではなく、当日の行動につながる具体的な一言にする
+- 自己紹介(15秒): 話し言葉。Xの名前で名乗り、「突拍子もないこと」をフックに使う。相手が「え、それどういうこと?」と聞きたくなる形に
+- キャッチフレーズ: 覚えてもらうための一言
+- 問い(insights): takeawayを支える具体的なサブの問い。本人の言葉を使う
+- 質問カード: opener(第一声)は自然でハードルの低い話し言葉。「すみません、ちょっといいですか」レベルの入りやすさ
 - すべて日本語で、本人がそのまま使える具体的な文章にする`;
 
 export async function POST(req: Request) {
@@ -104,21 +114,20 @@ export async function POST(req: Request) {
 Xの名前: ${input.xName}
 X ID: @${input.xId}
 
-## いま頑張っていること
-いちばん力を入れていること: ${input.workingMain}
-その中で楽しいこと・手応えを感じること: ${input.workingFun}
+## インパクト枠: 最近した突拍子もないこと・人に驚かれたこと
+${input.surprise || "(未入力)"}
 
-## 新しく始めたこと
-始めたこと: ${input.startedWhat}
-始めたきっかけ: ${input.startedWhy}
+## 挑戦枠: 最近始めた・続けている新しい挑戦
+${input.challenge || "(未入力)"}
 
-## 困っていること
-いま困っていること・モヤモヤ: ${input.struggleWhat}
-経験者に聞けるなら聞きたいこと: ${input.struggleAsk}
+## 課題枠: ふとした瞬間についつい考えすぎてしまうこと
+${input.overthink || "(未入力)"}
 
-## 話したい人・聞きたいこと
-話してみたい人: ${input.talkWho}
-登壇者や参加者に聞いてみたいこと: ${input.talkAsk}
+## 質問枠: 「この人にこれを聞いてみたい!」と思っていること
+${input.wantToAsk || "(未入力)"}
+
+## 他者視点枠: 普段使っているAIによる本人分析
+${input.aiSummary || "(未入力。他の回答から本人の関心と課題を推測してください)"}
 
 この人がこのイベントで最大の収穫(=人生を前に進める知見)を得られるよう、準備キットを生成してください。`;
 

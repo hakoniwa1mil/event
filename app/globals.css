@@ -396,3 +396,135 @@ button:disabled {
   font-weight: 700;
   font-size: 0.95rem;
 }
+
+/* ---- AI instruction box ---- */
+
+.ai-box {
+  background: var(--accent-pale);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.ai-box-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 8px;
+}
+
+.ai-box-text {
+  font-size: 0.85rem;
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+}
+
+/* ---- editable result ---- */
+
+.editable {
+  position: relative;
+  padding-right: 36px;
+}
+
+.editable p {
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+}
+
+.editable .big-text {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.edit-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: transparent;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+  opacity: 0.55;
+}
+
+.edit-btn:hover {
+  opacity: 1;
+}
+
+.editable.editing {
+  padding-right: 0;
+}
+
+.edit-area {
+  width: 100%;
+  min-height: 90px;
+  font: inherit;
+  font-size: 0.95rem;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+button.small {
+  padding: 7px 16px;
+  font-size: 0.82rem;
+}
+
+/* ---- takeaway ---- */
+
+.takeaway-card {
+  border: 2px solid var(--accent);
+  background: linear-gradient(180deg, #fff 0%, var(--accent-pale) 160%);
+}
+
+.takeaway-card .editable + .editable {
+  margin-top: 10px;
+}
+
+.takeaway-card .editable + .editable p {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.q-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 4px;
+}
+
+/* hookカード内の編集UI (白抜き文字の上) */
+
+.hook-card .editable p {
+  color: #fff;
+}
+
+.hook-card .edit-btn {
+  color: #fff;
+  opacity: 0.8;
+}
+
+.hook-card .edit-area {
+  color: var(--ink);
+}
+
+/* ---- share image preview ---- */
+
+.share-preview img {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}

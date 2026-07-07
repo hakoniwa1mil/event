@@ -3,18 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import type { PrepInput, PrepResult } from "../../api/generate/route";
+import { renderShareImage } from "@/lib/shareImage";
 
 const emptyInput: PrepInput = {
   xName: "",
   xId: "",
-  workingMain: "",
-  workingFun: "",
-  startedWhat: "",
-  startedWhy: "",
-  struggleWhat: "",
-  struggleAsk: "",
-  talkWho: "",
-  talkAsk: "",
+  surprise: "",
+  challenge: "",
+  overthink: "",
+  wantToAsk: "",
+  aiSummary: "",
 };
 
 interface EventInfo {
@@ -27,9 +25,10 @@ interface Step {
   label: string;
   title: string;
   hint: string;
+  optional?: boolean;
   fields: {
     key: keyof PrepInput;
-    label: string;
+    label?: string;
     placeholder: string;
     multiline?: boolean;
   }[];
@@ -37,7 +36,7 @@ interface Step {
 
 const steps: Step[] = [
   {
-    label: "STEP 1 / 5",
+    label: "STEP 1 / 6",
     title: "あなたのプロフィール",
     hint: "X (Twitter) の名前とIDを教えてください。アイコンもあると当日顔を覚えてもらいやすくなります",
     fields: [
@@ -46,82 +45,121 @@ const steps: Step[] = [
     ],
   },
   {
-    label: "STEP 2 / 5",
-    title: "いま頑張っていることは?",
-    hint: "仕事でも趣味でも発信でもOK。2つに分けると書きやすいです",
+    label: "STEP 2 / 6",
+    title: "最近した「ちょっと突拍子もないこと」は?",
+    hint: "人に驚かれたこと・笑われたことなど、小さなことでOK。自己紹介のフックになります",
     fields: [
       {
-        key: "workingMain",
-        label: "いちばん力を入れていること",
-        placeholder: "例: noteで週1本の執筆を続けている",
-        multiline: true,
-      },
-      {
-        key: "workingFun",
-        label: "その中で楽しいこと・手応えを感じること",
-        placeholder: "例: 読者からコメントをもらえた時が嬉しい",
+        key: "surprise",
+        placeholder: "例: イベントのために山口からフェリーで那須まで来た",
         multiline: true,
       },
     ],
   },
   {
-    label: "STEP 3 / 5",
-    title: "新しく始めたことは?",
-    hint: "最近の挑戦を教えてください。きっかけは会話の種になります",
+    label: "STEP 3 / 6",
+    title: "最近始めた「新しい挑戦」は?",
+    hint: "いま続けていること・これからやることもOK。STEP 2が一度きりの出来事なら、こちらは続いている挑戦",
     fields: [
       {
-        key: "startedWhat",
-        label: "最近始めたこと",
-        placeholder: "例: 一人ハッカソンを始めた",
-        multiline: true,
-      },
-      {
-        key: "startedWhy",
-        label: "始めたきっかけ",
-        placeholder: "例: アイデアを形にする力をつけたかった",
+        key: "challenge",
+        placeholder: "例: 一人ハッカソンでアプリづくりを始めた",
         multiline: true,
       },
     ],
   },
   {
-    label: "STEP 4 / 5",
-    title: "困っていることは?",
-    hint: "悩みは最高の会話のきっかけです。正直に書くほど良い質問カードができます",
+    label: "STEP 4 / 6",
+    title: "ふとした瞬間に、つい考えすぎてしまうことは?",
+    hint: "夜や移動中に頭でぐるぐるしてしまうこと。ここから「持ち帰るべき収穫」を導きます",
     fields: [
       {
-        key: "struggleWhat",
-        label: "いま困っていること・モヤモヤ",
-        placeholder: "例: 発信を続けているが手応えがない",
-        multiline: true,
-      },
-      {
-        key: "struggleAsk",
-        label: "経験者に聞けるなら、何を聞きたい?",
-        placeholder: "例: 継続のモチベーションをどう保っているか",
+        key: "overthink",
+        placeholder: "例: このままの働き方でいいのか。発信を続けた先に何があるのか",
         multiline: true,
       },
     ],
   },
   {
-    label: "STEP 5 / 5",
-    title: "誰と話したい? 何を聞きたい?",
-    hint: "具体的な名前でも「こんな人」でもOK",
+    label: "STEP 5 / 6",
+    title: "「この人にこれを聞いてみたい!」はありますか?",
+    hint: "登壇者でも「こんな活動をしている人」でもOK。誰に・何を、をセットで書くと質問カードの精度が上がります",
     fields: [
       {
-        key: "talkWho",
-        label: "話してみたい人",
-        placeholder: "例: 登壇者の◯◯さん、地方で活動しているクリエイター",
+        key: "wantToAsk",
+        placeholder: "例: 登壇者の◯◯さんに、発信を仕事につなげた最初の一歩を聞きたい",
         multiline: true,
       },
+    ],
+  },
+  {
+    label: "STEP 6 / 6",
+    title: "AIにあなたのことを聞いてみよう(任意)",
+    hint: "普段使っているAI (ChatGPT・Claude・Geminiなど) に下の指示文を送り、返ってきた回答を貼り付けてください。スキップしてもOK",
+    optional: true,
+    fields: [
       {
-        key: "talkAsk",
-        label: "登壇者や参加者に聞いてみたいこと",
-        placeholder: "例: 発信を仕事につなげた最初の一歩は何だったか",
+        key: "aiSummary",
+        label: "AIからの回答",
+        placeholder: "AIの回答をここに貼り付け(スキップ可)",
         multiline: true,
       },
     ],
   },
 ];
+
+function Editable({
+  text,
+  onSave,
+  big = false,
+}: {
+  text: string;
+  onSave: (v: string) => void;
+  big?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(text);
+
+  if (!editing) {
+    return (
+      <div className="editable">
+        <p className={big ? "big-text" : undefined}>{text}</p>
+        <button
+          className="edit-btn"
+          onClick={() => {
+            setDraft(text);
+            setEditing(true);
+          }}
+        >
+          ✏️
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="editable editing">
+      <textarea
+        className="edit-area"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+      />
+      <div className="edit-actions">
+        <button className="btn-ghost small" onClick={() => setEditing(false)}>
+          キャンセル
+        </button>
+        <button
+          className="btn-primary small"
+          onClick={() => {
+            onSave(draft);
+            setEditing(false);
+          }}
+        >
+          保存
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function EventPrep() {
   const params = useParams<{ id: string }>();
@@ -139,6 +177,8 @@ export default function EventPrep() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [shareImg, setShareImg] = useState<string | null>(null);
+  const [makingImg, setMakingImg] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -157,7 +197,8 @@ export default function EventPrep() {
         if (data.input) setInput({ ...emptyInput, ...data.input });
         if (data.icon) setIcon(data.icon);
         if (data.participantId) setParticipantId(data.participantId);
-        if (data.result) {
+        if (data.result?.takeaway) {
+          // 旧フォーマットの保存結果はスキップ (takeawayがあるもののみ復元)
           setResult(data.result);
           setPhase("result");
         }
@@ -188,7 +229,6 @@ export default function EventPrep() {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        // 128pxの正方形に切り抜いてデータ量を抑える
         const size = 128;
         const canvas = document.createElement("canvas");
         canvas.width = size;
@@ -207,15 +247,21 @@ export default function EventPrep() {
     reader.readAsDataURL(file);
   };
 
-  const currentFilled = steps[step].fields.some(
-    (f) => input[f.key].trim().length > 0
-  );
+  const aiInstruction = `私は${event?.name ?? "交流会イベント"}(${
+    event?.detail ?? ""
+  })に参加します。目的は「自分の人生を前に進める収穫を一つ得ること」です。これまでの私とのやり取りや記憶をふまえて、次の3点を各1〜2文で簡潔に教えてください。(1) 私が最近特に気にかけている・引っかかっていること (2) このイベントで得られると効きそうなこと (3) 私の強み、話すと面白がられそうな点。`;
+
+  const currentStep = steps[step];
+  const currentFilled =
+    currentStep.optional ||
+    currentStep.fields.some((f) => input[f.key].trim().length > 0);
 
   const generate = async () => {
     if (!event) return;
     setPhase("loading");
     setError(null);
     setWarning(null);
+    setShareImg(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -244,10 +290,50 @@ export default function EventPrep() {
     }
   };
 
+  // 手動編集: state更新 + localStorage + Supabase
+  const patchResult = (mutate: (r: PrepResult) => void) => {
+    setResult((prev) => {
+      if (!prev) return prev;
+      const next = structuredClone(prev);
+      mutate(next);
+      persist({ result: next });
+      if (participantId) {
+        fetch(`/api/participants/${participantId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ result: next }),
+        }).catch(() => {
+          setWarning("編集内容のサーバー保存に失敗しました(端末には保存済み)");
+        });
+      }
+      return next;
+    });
+  };
+
   const copy = async (id: string, text: string) => {
     await navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 1500);
+  };
+
+  const makeImage = async () => {
+    if (!result || !event) return;
+    setMakingImg(true);
+    try {
+      const url = await renderShareImage({
+        eventName: event.name,
+        xName: input.xName,
+        xId: input.xId,
+        icon,
+        hook: result.hook,
+        takeawayStatement: result.takeaway?.statement ?? "",
+        takeawayNote: result.takeaway?.note ?? "",
+        selfIntro: result.selfIntroShort,
+      });
+      setShareImg(url);
+    } finally {
+      setMakingImg(false);
+    }
   };
 
   if (eventError) {
@@ -282,9 +368,9 @@ export default function EventPrep() {
             ))}
           </div>
           <section className="step-card">
-            <span className="step-label">{steps[step].label}</span>
-            <h2>{steps[step].title}</h2>
-            <p className="step-hint">{steps[step].hint}</p>
+            <span className="step-label">{currentStep.label}</span>
+            <h2>{currentStep.title}</h2>
+            <p className="step-hint">{currentStep.hint}</p>
 
             {step === 0 && (
               <div className="icon-upload">
@@ -317,9 +403,22 @@ export default function EventPrep() {
               </div>
             )}
 
-            {steps[step].fields.map((f) => (
+            {step === 5 && (
+              <div className="ai-box">
+                <p className="ai-box-label">📋 AIに送る指示文</p>
+                <p className="ai-box-text">{aiInstruction}</p>
+                <button
+                  className="btn-primary small"
+                  onClick={() => copy("ai", aiInstruction)}
+                >
+                  {copied === "ai" ? "コピーしました!" : "指示文をコピー"}
+                </button>
+              </div>
+            )}
+
+            {currentStep.fields.map((f) => (
               <div className="field" key={f.key}>
-                <label>{f.label}</label>
+                {f.label && <label>{f.label}</label>}
                 {f.multiline ? (
                   <textarea
                     value={input[f.key]}
@@ -377,6 +476,21 @@ export default function EventPrep() {
       {phase === "result" && result && (
         <>
           <section className="result-section">
+            <h3>🎯 このイベントで必ず持ち帰ること</h3>
+            <div className="result-card takeaway-card">
+              <Editable
+                big
+                text={result.takeaway?.statement ?? ""}
+                onSave={(v) => patchResult((r) => (r.takeaway.statement = v))}
+              />
+              <Editable
+                text={result.takeaway?.note ?? ""}
+                onSave={(v) => patchResult((r) => (r.takeaway.note = v))}
+              />
+            </div>
+          </section>
+
+          <section className="result-section">
             <div className="result-card profile-card">
               {icon && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -391,42 +505,40 @@ export default function EventPrep() {
 
           <section className="result-section">
             <h3>🏷 あなたのキャッチフレーズ</h3>
-            <div className="result-card hook-card">{result.hook}</div>
-          </section>
-
-          <section className="result-section">
-            <h3>🎤 自己紹介(15秒版)</h3>
-            <div className="result-card">
-              <button
-                className="copy-btn"
-                onClick={() => copy("short", result.selfIntroShort)}
-              >
-                {copied === "short" ? "コピーしました!" : "コピー"}
-              </button>
-              <p>{result.selfIntroShort}</p>
+            <div className="result-card hook-card">
+              <Editable
+                big
+                text={result.hook}
+                onSave={(v) => patchResult((r) => (r.hook = v))}
+              />
             </div>
           </section>
 
           <section className="result-section">
-            <h3>🎤 自己紹介(1分版)</h3>
+            <h3>🎤 自己紹介(15秒)</h3>
             <div className="result-card">
               <button
                 className="copy-btn"
-                onClick={() => copy("long", result.selfIntroLong)}
+                onClick={() => copy("intro", result.selfIntroShort)}
               >
-                {copied === "long" ? "コピーしました!" : "コピー"}
+                {copied === "intro" ? "コピーしました!" : "コピー"}
               </button>
-              <p>{result.selfIntroLong}</p>
+              <Editable
+                text={result.selfIntroShort}
+                onSave={(v) => patchResult((r) => (r.selfIntroShort = v))}
+              />
             </div>
           </section>
 
           <section className="result-section">
-            <h3>🧭 このイベントで答えを見つけたい問い</h3>
+            <h3>🧭 答えを見つけたい問い</h3>
             {result.insights.map((ins, i) => (
               <div className="result-card" key={i}>
-                <p className="q-question">
-                  Q{i + 1}. {ins.question}
-                </p>
+                <p className="q-label">Q{i + 1}.</p>
+                <Editable
+                  text={ins.question}
+                  onSave={(v) => patchResult((r) => (r.insights[i].question = v))}
+                />
                 <p className="insight-why">{ins.why}</p>
                 <p className="insight-how">{ins.how}</p>
               </div>
@@ -438,8 +550,20 @@ export default function EventPrep() {
             {result.questionCards.map((card, i) => (
               <div className="result-card" key={i}>
                 <span className="q-target">{card.target}</span>
-                <p className="q-question">{card.question}</p>
-                <p className="q-opener">「{card.opener}」</p>
+                <Editable
+                  text={card.question}
+                  onSave={(v) =>
+                    patchResult((r) => (r.questionCards[i].question = v))
+                  }
+                />
+                <div className="q-opener">
+                  <Editable
+                    text={card.opener}
+                    onSave={(v) =>
+                      patchResult((r) => (r.questionCards[i].opener = v))
+                    }
+                  />
+                </div>
               </div>
             ))}
           </section>
@@ -447,11 +571,49 @@ export default function EventPrep() {
           <section className="result-section">
             <h3>🔥 直前に読み返すメッセージ</h3>
             <div className="result-card encouragement">
-              {result.encouragement}
+              <Editable
+                text={result.encouragement}
+                onSave={(v) => patchResult((r) => (r.encouragement = v))}
+              />
             </div>
           </section>
 
           {warning && <div className="error-box">{warning}</div>}
+
+          <section className="result-section">
+            <h3>📸 SNS投稿用の画像</h3>
+            {!shareImg ? (
+              <button
+                className="btn-primary"
+                style={{ width: "100%" }}
+                disabled={makingImg}
+                onClick={makeImage}
+              >
+                {makingImg ? "作成中…" : "画像を作成する"}
+              </button>
+            ) : (
+              <div className="share-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={shareImg} alt="SNS投稿用画像" />
+                <p className="step-hint">
+                  スマホは画像を長押しで保存できます
+                </p>
+                <div className="nav">
+                  <a
+                    className="btn-primary btn-link"
+                    style={{ flex: 1 }}
+                    href={shareImg}
+                    download="event-prep.png"
+                  >
+                    画像をダウンロード
+                  </a>
+                  <button className="btn-ghost" onClick={makeImage}>
+                    作り直す
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
 
           <div className="result-actions">
             <button
