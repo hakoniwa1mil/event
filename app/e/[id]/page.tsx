@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import type { PrepInput, PrepResult } from "../../api/generate/route";
 import { renderShareImage } from "@/lib/shareImage";
-import { renderProfileQr } from "@/lib/profileQr";
 
 const emptyInput: PrepInput = {
   xName: "",
@@ -96,7 +95,6 @@ export default function EventPrep() {
   const [warning, setWarning] = useState<string | null>(null);
   const [shareImg, setShareImg] = useState<string | null>(null);
   const [makingImg, setMakingImg] = useState(false);
-  const [qrImg, setQrImg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -165,24 +163,6 @@ export default function EventPrep() {
     reader.readAsDataURL(file);
   };
 
-  useEffect(() => {
-    if (phase !== "result" || !input.xId.trim()) {
-      setQrImg(null);
-      return;
-    }
-    let cancelled = false;
-    renderProfileQr(input.xId.trim(), icon)
-      .then((url) => {
-        if (!cancelled) setQrImg(url);
-      })
-      .catch(() => {
-        if (!cancelled) setQrImg(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [phase, input.xId, icon]);
-
   const aiInstruction = `私は${event?.name ?? "交流会イベント"}(${
     event?.detail ?? ""
   })に参加します。これまでの私とのやり取りや記憶をふまえて、次の4点を深堀りして、各2〜3文で教えてください。
@@ -247,6 +227,8 @@ export default function EventPrep() {
 
   // 手動編集: state更新 + localStorage + Supabase
   const patchResult = (mutate: (r: PrepResult) => void) => {
+    // 編集前に作成した画像は古い文章のままなので、編集したら無効化して作り直しを促す
+    setShareImg(null);
     setResult((prev) => {
       if (!prev) return prev;
       const next = structuredClone(prev);
@@ -522,18 +504,11 @@ export default function EventPrep() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img className="profile-icon" src={icon} alt="" />
               )}
-              <div style={{ flex: 1 }}>
+              <div>
                 <p className="profile-name">{input.xName}</p>
                 <p className="profile-id">@{input.xId}</p>
               </div>
-              {qrImg && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img className="profile-qr" src={qrImg} alt="XプロフィールのQRコード" />
-              )}
             </div>
-            {qrImg && (
-              <p className="qr-hint">📱 会場でこのQRを見せると、あなたのXをフォローしてもらえます</p>
-            )}
 
             {/* ② 目的タイトル */}
             <div className="intro-title">
@@ -589,20 +564,17 @@ export default function EventPrep() {
               <div className="share-preview">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={shareImg} alt="SNS投稿用画像" />
-                <p className="step-hint">スマホは画像を長押しで保存できます</p>
-                <div className="nav">
-                  <a
-                    className="btn-primary btn-link"
-                    style={{ flex: 1 }}
-                    href={shareImg}
-                    download="tanemaki-card.png"
-                  >
-                    画像をダウンロード
-                  </a>
-                  <button className="btn-ghost" onClick={makeImage}>
-                    作り直す
-                  </button>
-                </div>
+                <p className="step-hint">
+                  スマホは画像を長押しで保存できます。カードの文章を編集すると、この画像は自動的に無効になり、もう一度「画像を作成する」で最新の内容に作り直せます
+                </p>
+                <a
+                  className="btn-primary btn-link"
+                  style={{ width: "100%" }}
+                  href={shareImg}
+                  download="tanemaki-card.png"
+                >
+                  画像をダウンロード
+                </a>
               </div>
             )}
           </section>
