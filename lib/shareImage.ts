@@ -1,5 +1,5 @@
-// 自己紹介カードをSNS投稿用の1枚画像にする。ブラウザ側で実行
-// 高さはコンテンツ量に応じて動的に決定し、どのセクションも欠けずに収まるようにする
+// 自己紹介カードを、日本の官製はがきサイズ(100mm×148mm・300dpi)で1枚画像にする。ブラウザ側で実行
+// 文章量に応じて全体のスケールを自動調整し、はがきいっぱいにきれいに収まるようにする
 
 export interface ShareImageData {
   eventName: string;
@@ -12,8 +12,10 @@ export interface ShareImageData {
   questionLine: string;
 }
 
-const W = 1080;
-const PAD = 80;
+// はがき: 100mm × 148mm を 300dpi で出力
+const W = 1181;
+const H = 1748;
+
 const FONT =
   '"Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif';
 
@@ -23,6 +25,65 @@ const ACCENT_PALE = "#e6f7f2";
 const INK = "#222222";
 const INK_SOFT = "#666666";
 const BG = "#fafaf8";
+
+const MIN_SCALE = 0.5;
+
+// 基準サイズ (以前のSNS用画像 幅1080px設計) を、はがき幅に合わせて拡大した基準値
+const K0 = W / 1080;
+
+interface Metrics {
+  pad: number;
+  barGap: number;
+  eventFont: number;
+  eventGap: number;
+  icon: number;
+  nameGap: number;
+  nameFont: number;
+  nameOffset: number;
+  idFont: number;
+  idOffset: number;
+  profileGap: number;
+  titleFont: number;
+  titleLineH: number;
+  titleGap: number;
+  dividerGap: number;
+  labelFont: number;
+  labelBlockH: number;
+  bodyFont: number;
+  bodyLineH: number;
+  trailingGap: number;
+  footerFont: number;
+  footerBand: number;
+  footerMargin: number;
+}
+
+function metrics(k: number): Metrics {
+  return {
+    pad: 80 * k,
+    barGap: 14 * k,
+    eventFont: 30 * k,
+    eventGap: 84 * k,
+    icon: 130 * k,
+    nameGap: 36 * k,
+    nameFont: 50 * k,
+    nameOffset: 58 * k,
+    idFont: 34 * k,
+    idOffset: 108 * k,
+    profileGap: 72 * k,
+    titleFont: 58 * k,
+    titleLineH: 82 * k,
+    titleGap: 48 * k,
+    dividerGap: 40 * k,
+    labelFont: 30 * k,
+    labelBlockH: 54 * k,
+    bodyFont: 38 * k,
+    bodyLineH: 58 * k,
+    trailingGap: 28 * k,
+    footerFont: 26 * k,
+    footerBand: 150 * k,
+    footerMargin: 52 * k,
+  };
+}
 
 // 日本語は単語区切りがないので1文字ずつ折り返す
 function wrapText(
@@ -61,35 +122,71 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+interface Layout {
+  titleLines: string[];
+  sectionLines: string[][];
+  contentHeight: number; // イベント名行〜最後のセクションまでの高さ (topOffset・フッター分は含まない)
+}
+
+function computeLayout(
+  ctx: CanvasRenderingContext2D,
+  data: ShareImageData,
+  sections: { label: string; text: string }[],
+  m: Metrics
+): Layout {
+  const contentW = W - m.pad * 2;
+
+  ctx.font = `800 ${m.titleFont}px ${FONT}`;
+  const titleLines = wrapText(ctx, data.purposeTitle, contentW, 6);
+
+  ctx.font = `500 ${m.bodyFont}px ${FONT}`;
+  const sectionLines = sections.map((sec) => wrapText(ctx, sec.text, contentW, 5));
+
+  let h = m.eventGap; // イベント名行
+  h += m.icon + m.profileGap; // プロフィール行
+  h += titleLines.length * m.titleLineH + m.titleGap; // タイトル
+  sections.forEach((_, i) => {
+    h += m.dividerGap + m.labelBlockH;
+    h += sectionLines[i].length * m.bodyLineH + m.trailingGap;
+  });
+
+  return { titleLines, sectionLines, contentHeight: h };
+}
+
 export async function renderShareImage(data: ShareImageData): Promise<string> {
-  // 計測用の仮キャンバス (幅だけ合わせればフォントの折り返し計算はできる)
   const measureCanvas = document.createElement("canvas");
   measureCanvas.width = W;
   const mctx = measureCanvas.getContext("2d")!;
-  const contentW = W - PAD * 2;
-
-  mctx.font = `800 58px ${FONT}`;
-  const titleLines = wrapText(mctx, data.purposeTitle, contentW, 6);
 
   const sections: { label: string; text: string }[] = [
     { label: "🔥 最近の挑戦", text: data.challengeLine },
     { label: "💭 最近もやもやしていること", text: data.overthinkLine },
     { label: "🙋 聞いてみたいこと", text: data.questionLine },
   ];
-  mctx.font = `500 38px ${FONT}`;
-  const sectionLines = sections.map((sec) => wrapText(mctx, sec.text, contentW, 5));
 
-  // ---- 高さを積み上げて計算する ----
-  const iconSize = 130;
-  let y = PAD + 14; // top帯 + 余白
-  y += 84; // イベント名行
-  y += iconSize + 72; // プロフィール行
-  y += titleLines.length * 82 + 48; // タイトル
-  sections.forEach((_, i) => {
-    y += 40 + 54; // 区切り線+ラベル
-    y += sectionLines[i].length * 58 + 28; // 本文
-  });
-  const H = y + 150; // フッター分の余白を確保
+  // 1段目: 基準スケールで組んでみる
+  let k = K0;
+  let m = metrics(k);
+  let layout = computeLayout(mctx, data, sections, m);
+  let topMin = m.pad + m.barGap;
+  let available = H - m.footerBand;
+
+  // はみ出す場合だけ、全体を縮小して収まるスケールに引き直す
+  if (topMin + layout.contentHeight > available) {
+    const shrink = Math.max(
+      MIN_SCALE,
+      (available - topMin) / layout.contentHeight
+    );
+    k = K0 * shrink;
+    m = metrics(k);
+    layout = computeLayout(mctx, data, sections, m);
+    topMin = m.pad + m.barGap;
+    available = H - m.footerBand;
+  }
+
+  // 余裕があれば縦方向中央に配置する
+  const slack = Math.max(0, available - topMin - layout.contentHeight);
+  const startY = topMin + slack / 2;
 
   // ---- 本描画 ----
   const canvas = document.createElement("canvas");
@@ -100,23 +197,23 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = ACCENT;
-  ctx.fillRect(0, 0, W, 14);
+  ctx.fillRect(0, 0, W, m.barGap);
 
-  let cy = PAD + 14;
+  let cy = startY;
 
   ctx.fillStyle = INK_SOFT;
-  ctx.font = `600 30px ${FONT}`;
-  ctx.fillText(`🌱 ${data.eventName}`, PAD, cy + 30);
-  cy += 84;
+  ctx.font = `600 ${m.eventFont}px ${FONT}`;
+  ctx.fillText(`🌱 ${data.eventName}`, m.pad, cy + m.eventFont);
+  cy += m.eventGap;
 
   if (data.icon) {
     try {
       const img = await loadImage(data.icon);
       ctx.save();
       ctx.beginPath();
-      ctx.arc(PAD + iconSize / 2, cy + iconSize / 2, iconSize / 2, 0, Math.PI * 2);
+      ctx.arc(m.pad + m.icon / 2, cy + m.icon / 2, m.icon / 2, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(img, PAD, cy, iconSize, iconSize);
+      ctx.drawImage(img, m.pad, cy, m.icon, m.icon);
       ctx.restore();
     } catch {
       /* アイコン読込失敗は無視 */
@@ -124,53 +221,53 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
   } else {
     ctx.fillStyle = ACCENT_PALE;
     ctx.beginPath();
-    ctx.arc(PAD + iconSize / 2, cy + iconSize / 2, iconSize / 2, 0, Math.PI * 2);
+    ctx.arc(m.pad + m.icon / 2, cy + m.icon / 2, m.icon / 2, 0, Math.PI * 2);
     ctx.fill();
   }
-  const textX = PAD + iconSize + 36;
+  const textX = m.pad + m.icon + m.nameGap;
   ctx.fillStyle = INK;
-  ctx.font = `700 50px ${FONT}`;
-  ctx.fillText(data.xName, textX, cy + 58);
+  ctx.font = `700 ${m.nameFont}px ${FONT}`;
+  ctx.fillText(data.xName, textX, cy + m.nameOffset);
   ctx.fillStyle = INK_SOFT;
-  ctx.font = `400 34px ${FONT}`;
-  ctx.fillText(`@${data.xId}`, textX, cy + 108);
-  cy += iconSize + 72;
+  ctx.font = `400 ${m.idFont}px ${FONT}`;
+  ctx.fillText(`@${data.xId}`, textX, cy + m.idOffset);
+  cy += m.icon + m.profileGap;
 
   ctx.fillStyle = ACCENT_DARK;
-  ctx.font = `800 58px ${FONT}`;
-  for (const line of titleLines) {
-    ctx.fillText(line, PAD, cy + 58);
-    cy += 82;
+  ctx.font = `800 ${m.titleFont}px ${FONT}`;
+  for (const line of layout.titleLines) {
+    ctx.fillText(line, m.pad, cy + m.titleFont);
+    cy += m.titleLineH;
   }
-  cy += 48;
+  cy += m.titleGap;
 
   sections.forEach((sec, i) => {
     ctx.strokeStyle = "#e5e5e0";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(PAD, cy);
-    ctx.lineTo(W - PAD, cy);
+    ctx.moveTo(m.pad, cy);
+    ctx.lineTo(W - m.pad, cy);
     ctx.stroke();
-    cy += 40;
+    cy += m.dividerGap;
 
     ctx.fillStyle = ACCENT_DARK;
-    ctx.font = `700 30px ${FONT}`;
-    ctx.fillText(sec.label, PAD, cy + 30);
-    cy += 54;
+    ctx.font = `700 ${m.labelFont}px ${FONT}`;
+    ctx.fillText(sec.label, m.pad, cy + m.labelFont);
+    cy += m.labelBlockH;
 
     ctx.fillStyle = INK;
-    ctx.font = `500 38px ${FONT}`;
-    for (const line of sectionLines[i]) {
-      ctx.fillText(line, PAD, cy + 38);
-      cy += 58;
+    ctx.font = `500 ${m.bodyFont}px ${FONT}`;
+    for (const line of layout.sectionLines[i]) {
+      ctx.fillText(line, m.pad, cy + m.bodyFont);
+      cy += m.bodyLineH;
     }
-    cy += 28;
+    cy += m.trailingGap;
   });
 
   ctx.fillStyle = INK_SOFT;
-  ctx.font = `400 26px ${FONT}`;
+  ctx.font = `400 ${m.footerFont}px ${FONT}`;
   ctx.textAlign = "center";
-  ctx.fillText("たねまき — イベントで最大の収穫を得よう", W / 2, H - 52);
+  ctx.fillText("たねまき — イベントで最大の収穫を得よう", W / 2, H - m.footerMargin);
   ctx.textAlign = "left";
 
   return canvas.toDataURL("image/png");
