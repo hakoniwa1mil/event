@@ -127,7 +127,12 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
     { label: "🙋 聞いてみたいこと", text: data.questionLine },
   ];
 
+  // フッターと本文が被らないよう、本文の下限を確保する
+  const CONTENT_BOTTOM = H - 150;
+
   for (const sec of sections) {
+    if (y + 100 > CONTENT_BOTTOM) break; // 見出しすら入らないならセクションごと省略
+
     // 区切り線
     ctx.strokeStyle = "#e5e5e0";
     ctx.lineWidth = 2;
@@ -135,27 +140,28 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
     ctx.moveTo(PAD, y);
     ctx.lineTo(W - PAD, y);
     ctx.stroke();
-    y += 44;
+    y += 40;
 
     ctx.fillStyle = ACCENT_DARK;
     ctx.font = `700 30px ${FONT}`;
     ctx.fillText(sec.label, PAD, y + 30);
-    y += 56;
+    y += 54;
 
     ctx.fillStyle = INK;
     ctx.font = `500 38px ${FONT}`;
     for (const line of wrapText(ctx, sec.text, contentW, 3)) {
+      if (y + 58 > CONTENT_BOTTOM) break; // 下限を超える行は描かない
       ctx.fillText(line, PAD, y + 38);
       y += 58;
     }
-    y += 32;
+    y += 28;
   }
 
   // フッター
   ctx.fillStyle = INK_SOFT;
   ctx.font = `400 26px ${FONT}`;
   ctx.textAlign = "center";
-  ctx.fillText("イベント準備キット — 最大の収穫を得よう", W / 2, H - 48);
+  ctx.fillText("イベント準備キット — 最大の収穫を得よう", W / 2, H - 52);
   ctx.textAlign = "left";
 
   return canvas.toDataURL("image/png");

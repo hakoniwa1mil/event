@@ -556,6 +556,16 @@ button.small {
   margin-bottom: 4px;
 }
 
+/* ---- privacy note ---- */
+
+.privacy-note {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 14px;
+  padding: 0 6px;
+  line-height: 1.6;
+}
+
 /* ---- share image preview ---- */
 
 .share-preview img {

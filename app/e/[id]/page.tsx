@@ -67,12 +67,12 @@ const steps: Step[] = [
   },
   {
     label: "STEP 4 / 6",
-    title: "ふとした瞬間に、つい考えてしまうことは?",
-    hint: "夜や移動中に頭でぐるぐるしてしまうこと。ここからカードのタイトルを導きます。正直に書くほど良いカードになります",
+    title: "いま「AかBか」で決めきれていないことは?",
+    hint: "「復職か起業か」「続けるかやめるか」のような二択で書くと簡単です。決めきれていないこと=このイベントで持ち帰るべき収穫の種。ここからカードのタイトルを導きます",
     fields: [
       {
         key: "overthink",
-        placeholder: "例: 復職するべきかどうか。noteで稼ぎたいけど今の自分に売れるものはあるのか",
+        placeholder: "例: 安定した復職か、自分の事業への飛び込みか",
         multiline: true,
       },
     ],
@@ -255,7 +255,8 @@ export default function EventPrep() {
 (1) 私が本当に達成したい最大の目標
 (2) その目標に対して、今の私が引っかかっている矛盾や遠回り
 (3) このイベントで私が「決めるべきこと」や「いったん手放すべきこと」
-(4) 初対面の人に驚かれそうな、私のエピソードや行動`;
+(4) 初対面の人に驚かれそうな、私のエピソードや行動
+※回答には、実名・住所・勤務先・具体的な人名など、個人を特定できる情報は含めないでください。`;
 
   const [copiedAi, setCopiedAi] = useState(false);
   const copyAiInstruction = async () => {
@@ -466,6 +467,11 @@ export default function EventPrep() {
             </div>
             {error && <div className="error-box">{error}</div>}
           </section>
+
+          <p className="privacy-note">
+            🔒 入力内容はカード生成のためにAnthropic (Claude API)
+            へ送信されます。API経由のデータがAIの学習に使われることはありません。入力と生成結果はこのイベントのデータベースに保存されます。実名や住所などの個人情報は書かないでください。
+          </p>
         </>
       )}
 
