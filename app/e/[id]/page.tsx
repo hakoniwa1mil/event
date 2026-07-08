@@ -13,6 +13,7 @@ const emptyInput: PrepInput = {
   overthink: "",
   askWho: "",
   askWhat: "",
+  aiSummary: "",
 };
 
 interface EventInfo {
@@ -25,6 +26,7 @@ interface Step {
   label: string;
   title: string;
   hint: string;
+  optional?: boolean;
   fields: {
     key: keyof PrepInput;
     label?: string;
@@ -35,7 +37,7 @@ interface Step {
 
 const steps: Step[] = [
   {
-    label: "STEP 1 / 5",
+    label: "STEP 1 / 6",
     title: "あなたのプロフィール",
     hint: "X (Twitter) の名前とIDを教えてください。アイコンもあると当日顔を覚えてもらいやすくなります",
     fields: [
@@ -44,7 +46,7 @@ const steps: Step[] = [
     ],
   },
   {
-    label: "STEP 2 / 5",
+    label: "STEP 2 / 6",
     title: "どこから来ますか?",
     hint: "県名や街の名前でOK。遠くから来るほど良いネタになります",
     fields: [
@@ -52,7 +54,7 @@ const steps: Step[] = [
     ],
   },
   {
-    label: "STEP 3 / 5",
+    label: "STEP 3 / 6",
     title: "最近やった「新しい挑戦」は?",
     hint: "人に驚かれたこと・笑われたことでもOK。小さなことで大丈夫です",
     fields: [
@@ -64,7 +66,7 @@ const steps: Step[] = [
     ],
   },
   {
-    label: "STEP 4 / 5",
+    label: "STEP 4 / 6",
     title: "ふとした瞬間に、つい考えてしまうことは?",
     hint: "夜や移動中に頭でぐるぐるしてしまうこと。ここからカードのタイトルを導きます。正直に書くほど良いカードになります",
     fields: [
@@ -76,7 +78,7 @@ const steps: Step[] = [
     ],
   },
   {
-    label: "STEP 5 / 5",
+    label: "STEP 5 / 6",
     title: "「この人にこれを聞いてみたい!」はありますか?",
     hint: "登壇者でも「こんな活動をしている人」でもOK",
     fields: [
@@ -89,6 +91,20 @@ const steps: Step[] = [
         key: "askWhat",
         label: "何を聞きたい?",
         placeholder: "例: 受託ビジネスで顧客にイラっとすることはありますか?",
+        multiline: true,
+      },
+    ],
+  },
+  {
+    label: "STEP 6 / 6",
+    title: "AIにあなたのことを聞いてみよう(任意)",
+    hint: "普段使っているAI (ChatGPT・Claude・Geminiなど) に下の指示文を送り、返ってきた回答を貼り付けてください。あなたのことを知っているAIの分析が入ると、カードのタイトルが格段に濃くなります。スキップしてもOK",
+    optional: true,
+    fields: [
+      {
+        key: "aiSummary",
+        label: "AIからの回答",
+        placeholder: "AIの回答をここに貼り付け(スキップ可)",
         multiline: true,
       },
     ],
@@ -233,10 +249,25 @@ export default function EventPrep() {
     reader.readAsDataURL(file);
   };
 
+  const aiInstruction = `私は${event?.name ?? "交流会イベント"}(${
+    event?.detail ?? ""
+  })に参加します。この交流会で「自分の人生を前に進める収穫」を一つ持ち帰りたいです。これまでの私とのやり取りや記憶をふまえて、次の4点を各1〜2文で簡潔に教えてください。
+(1) 私が本当に達成したい最大の目標
+(2) その目標に対して、今の私が引っかかっている矛盾や遠回り
+(3) このイベントで私が「決めるべきこと」や「いったん手放すべきこと」
+(4) 初対面の人に驚かれそうな、私のエピソードや行動`;
+
+  const [copiedAi, setCopiedAi] = useState(false);
+  const copyAiInstruction = async () => {
+    await navigator.clipboard.writeText(aiInstruction);
+    setCopiedAi(true);
+    setTimeout(() => setCopiedAi(false), 1500);
+  };
+
   const currentStep = steps[step];
-  const currentFilled = currentStep.fields.some(
-    (f) => input[f.key].trim().length > 0
-  );
+  const currentFilled =
+    currentStep.optional ||
+    currentStep.fields.some((f) => input[f.key].trim().length > 0);
 
   const generate = async () => {
     if (!event) return;
@@ -376,6 +407,16 @@ export default function EventPrep() {
                     if (f) onIconSelected(f);
                   }}
                 />
+              </div>
+            )}
+
+            {currentStep.optional && (
+              <div className="ai-box">
+                <p className="ai-box-label">📋 AIに送る指示文</p>
+                <p className="ai-box-text">{aiInstruction}</p>
+                <button className="btn-primary small" onClick={copyAiInstruction}>
+                  {copiedAi ? "コピーしました!" : "指示文をコピー"}
+                </button>
               </div>
             )}
 
