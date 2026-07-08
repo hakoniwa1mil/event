@@ -286,7 +286,7 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
   ctx.fillStyle = INK_SOFT;
   ctx.font = `400 ${m.footerFont}px ${FONT}`;
   ctx.textAlign = "center";
-  ctx.fillText("たねまき — イベントで最大の収穫を得よう", W / 2, H - m.footerMargin);
+  ctx.fillText("気ぃあえ — Kikkakeから気が合うように", W / 2, H - m.footerMargin);
   ctx.textAlign = "left";
 
   return canvas.toDataURL("image/png");

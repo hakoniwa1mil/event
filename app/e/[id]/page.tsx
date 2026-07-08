@@ -279,7 +279,7 @@ export default function EventPrep() {
     return (
       <main className="container">
         <header className="header">
-          <h1>🌱 たねまき</h1>
+          <h1>🌱 気ぃあえ</h1>
         </header>
         <div className="error-box">{eventError}</div>
       </main>
@@ -289,7 +289,7 @@ export default function EventPrep() {
   return (
     <main className="container">
       <header className="header">
-        <h1>🌱 たねまき</h1>
+        <h1>🌱 気ぃあえ</h1>
         {event ? (
           <p>
             {event.name} — {event.detail}
