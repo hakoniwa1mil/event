@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import type { PrepInput, PrepResult } from "../../api/generate/route";
 import { renderShareImage } from "@/lib/shareImage";
+import { renderProfileQr } from "@/lib/profileQr";
 
 const emptyInput: PrepInput = {
   xName: "",
@@ -23,7 +24,7 @@ interface EventInfo {
   detail: string;
 }
 
-const STEP_COUNT = 3;
+const STEP_COUNT = 2;
 
 function Editable({
   text,
@@ -95,6 +96,7 @@ export default function EventPrep() {
   const [warning, setWarning] = useState<string | null>(null);
   const [shareImg, setShareImg] = useState<string | null>(null);
   const [makingImg, setMakingImg] = useState(false);
+  const [qrImg, setQrImg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -163,12 +165,31 @@ export default function EventPrep() {
     reader.readAsDataURL(file);
   };
 
+  useEffect(() => {
+    if (phase !== "result" || !input.xId.trim()) {
+      setQrImg(null);
+      return;
+    }
+    let cancelled = false;
+    renderProfileQr(input.xId.trim(), icon)
+      .then((url) => {
+        if (!cancelled) setQrImg(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrImg(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, input.xId, icon]);
+
   const aiInstruction = `私は${event?.name ?? "交流会イベント"}(${
     event?.detail ?? ""
-  })に参加します。これまでの私とのやり取りや記憶をふまえて、次の3点を深堀りして、各2〜3文で教えてください。
+  })に参加します。これまでの私とのやり取りや記憶をふまえて、次の4点を深堀りして、各2〜3文で教えてください。
 (1) 私が最近挑戦したこと(人に驚かれたこと・笑われたことでもOK。小さなことで構いません)
 (2) 私が最近もやもやしていること(迷っていること・気になっていること・引っかかっていることなど)
 (3) 私がこのイベントで得るべきこと(達成したい目標や持ち帰りたい知見)
+(4) 会場にいる人なら誰にでも投げかけられそうな、私が聞いてみたい質問を1つ
 ※回答には、実名・住所・勤務先・具体的な人名など、個人を特定できる情報は含めないでください。`;
 
   const [copiedAi, setCopiedAi] = useState(false);
@@ -181,13 +202,12 @@ export default function EventPrep() {
   const currentFilled =
     step === 0
       ? input.xName.trim().length > 0 && input.xId.trim().length > 0
-      : step === 1
-      ? input.mode === "ai"
-        ? input.aiRaw.trim().length > 0
-        : input.challenge.trim().length > 0 &&
-          input.overthink.trim().length > 0 &&
-          input.eventGoal.trim().length > 0
-      : input.askSomething.trim().length > 0;
+      : input.mode === "ai"
+      ? input.aiRaw.trim().length > 0
+      : input.challenge.trim().length > 0 &&
+        input.overthink.trim().length > 0 &&
+        input.eventGoal.trim().length > 0 &&
+        input.askSomething.trim().length > 0;
 
   const generate = async () => {
     if (!event) return;
@@ -303,7 +323,7 @@ export default function EventPrep() {
               <>
                 <h2>あなたのプロフィール</h2>
                 <p className="step-hint">
-                  X (Twitter) の名前とIDを教えてください。アイコン・出発地は任意です(あると当日顔を覚えてもらいやすくなります)
+                  X (Twitter) の名前とIDを教えてください。アイコン・出発地は任意です。
                 </p>
                 <div className="icon-upload">
                   <button
@@ -365,7 +385,7 @@ export default function EventPrep() {
 
             {step === 1 && (
               <>
-                <h2>最近の挑戦 & もやもや & 得るべきこと</h2>
+                <h2>普段使いのAIに教えてもらおう</h2>
                 <p className="step-hint">
                   普段使っているAI (ChatGPT・Claude・Geminiなど)
                   に聞くと、自分で考えるより早く&深く言語化できます。AIを使わない場合は直接入力してください
@@ -432,24 +452,16 @@ export default function EventPrep() {
                         onChange={(e) => update("eventGoal", e.target.value)}
                       />
                     </div>
+                    <div className="field">
+                      <label>みんなに聞いてみたいこと</label>
+                      <textarea
+                        value={input.askSomething}
+                        placeholder="例: 受託ビジネスで顧客にイラっとすることはありますか?"
+                        onChange={(e) => update("askSomething", e.target.value)}
+                      />
+                    </div>
                   </>
                 )}
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <h2>みんなに聞いてみたいこと</h2>
-                <p className="step-hint">
-                  会場にいる誰にでも投げかけられる質問を1つ考えてください。当日の話しかけるきっかけになります
-                </p>
-                <div className="field">
-                  <textarea
-                    value={input.askSomething}
-                    placeholder="例: 受託ビジネスで顧客にイラっとすることはありますか?"
-                    onChange={(e) => update("askSomething", e.target.value)}
-                  />
-                </div>
               </>
             )}
 
@@ -510,11 +522,18 @@ export default function EventPrep() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img className="profile-icon" src={icon} alt="" />
               )}
-              <div>
+              <div style={{ flex: 1 }}>
                 <p className="profile-name">{input.xName}</p>
                 <p className="profile-id">@{input.xId}</p>
               </div>
+              {qrImg && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="profile-qr" src={qrImg} alt="XプロフィールのQRコード" />
+              )}
             </div>
+            {qrImg && (
+              <p className="qr-hint">📱 会場でこのQRを見せると、あなたのXをフォローしてもらえます</p>
+            )}
 
             {/* ② 目的タイトル */}
             <div className="intro-title">

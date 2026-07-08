@@ -375,6 +375,21 @@ button:disabled {
   color: var(--ink-soft);
 }
 
+.profile-qr {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.qr-hint {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  text-align: right;
+  margin-top: 6px;
+}
+
 /* ---- share url ---- */
 
 .share-box {

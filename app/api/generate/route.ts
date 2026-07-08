@@ -126,9 +126,9 @@ export async function POST(req: Request) {
     await supabase.from("generate_calls").insert({ ip });
   }
 
-  const challengeOverthinkSection =
+  const answerSection =
     input.mode === "ai"
-      ? `## 普段使っているAIに聞いた回答 (最近の挑戦・最近もやもやしていること・このイベントで得るべきことを含む)
+      ? `## 普段使っているAIに聞いた回答 (最近の挑戦・最近もやもやしていること・このイベントで得るべきこと・みんなに聞いてみたいことを含む)
 ${input.aiRaw || "(未入力)"}`
       : `## 最近やった新しい挑戦 (人に驚かれたことでもOK)
 ${input.challenge || "(未入力)"}
@@ -137,7 +137,10 @@ ${input.challenge || "(未入力)"}
 ${input.overthink || "(未入力)"}
 
 ## このイベントで得るべきこと (タイトル生成の最優先材料)
-${input.eventGoal || "(未入力)"}`;
+${input.eventGoal || "(未入力)"}
+
+## みんなに聞いてみたいこと
+${input.askSomething || "(未入力)"}`;
 
   const userPrompt = `以下がユーザーの回答です。
 
@@ -152,10 +155,7 @@ X ID: @${input.xId}
 ## どこから来るか
 ${input.fromWhere || "(未入力)"}
 
-${challengeOverthinkSection}
-
-## みんなに聞いてみたいこと
-${input.askSomething || "(未入力)"}
+${answerSection}
 
 この人の自己紹介カードの4行を生成してください。`;
 
