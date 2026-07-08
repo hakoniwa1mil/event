@@ -85,7 +85,14 @@ function metrics(k: number): Metrics {
   };
 }
 
-// 日本語は単語区切りがないので1文字ずつ折り返す
+// 行頭に来てはいけない文字 (句読点・閉じ括弧・小書き文字など)
+const NO_LINE_START =
+  "、。，．・：；？！゛゜ヽヾゝゞ々ー）］｝」』】〉》〕｣ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ,.:;?!)]}」』";
+// 行末に来てはいけない文字 (始め括弧など)
+const NO_LINE_END = "（［｛「『【〈《〔｢([{";
+
+// 日本語は単語区切りがないので1文字ずつ折り返すが、句読点や括弧が行頭・行末で
+// 不自然に孤立しないよう簡易的な禁則処理を行う
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -97,6 +104,18 @@ function wrapText(
     let line = "";
     for (const ch of para) {
       if (ctx.measureText(line + ch).width > maxWidth && line.length > 0) {
+        // 行末が始め括弧などで終わる場合は、次の行の先頭に送る (行末禁則)
+        if (NO_LINE_END.includes(line[line.length - 1])) {
+          const carried = line.slice(-1);
+          lines.push(line.slice(0, -1));
+          line = carried + ch;
+          continue;
+        }
+        // 次の文字が句読点・閉じ括弧などの行頭禁止文字なら、はみ出しても現在行に含める
+        if (NO_LINE_START.includes(ch)) {
+          line += ch;
+          continue;
+        }
         lines.push(line);
         line = ch;
       } else {

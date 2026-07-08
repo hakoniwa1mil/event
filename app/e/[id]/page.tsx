@@ -61,9 +61,6 @@ function Editable({
         onChange={(e) => setDraft(e.target.value)}
       />
       <div className="edit-actions">
-        <button className="btn-ghost small" onClick={() => setEditing(false)}>
-          キャンセル
-        </button>
         <button
           className="btn-primary small"
           onClick={() => {
@@ -72,6 +69,9 @@ function Editable({
           }}
         >
           保存
+        </button>
+        <button className="btn-ghost small" onClick={() => setEditing(false)}>
+          キャンセル
         </button>
       </div>
     </div>
