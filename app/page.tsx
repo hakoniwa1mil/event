@@ -4,8 +4,8 @@ export default function Home() {
   return (
     <main className="container">
       <header className="header">
-        <h1>🎒 イベント準備キット</h1>
-        <p>参加するイベントで最大の収穫を得よう</p>
+        <h1>🌱 たねまき</h1>
+        <p>~イベントで最大の収穫を得よう @9ji2neru~</p>
       </header>
 
       <section className="step-card">

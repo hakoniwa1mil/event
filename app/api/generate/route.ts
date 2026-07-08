@@ -31,10 +31,11 @@ export interface PrepInput {
   xName: string;
   xId: string;
   fromWhere: string; // どこから来るか (任意)
-  mode: "ai" | "manual"; // 「最近の挑戦」「最近もやもやしていること」の入力方法
+  mode: "ai" | "manual"; // 「最近の挑戦」「最近もやもやしていること」「得るべきこと」の入力方法
   aiRaw: string; // mode="ai": 普段使っているAIに聞いた回答をそのまま貼り付けたもの
   challenge: string; // mode="manual": 最近やった新しい挑戦
   overthink: string; // mode="manual": 最近もやもやしていること
+  eventGoal: string; // mode="manual": このイベントで得るべきこと (タイトル生成の材料専用)
   askSomething: string; // みんなに聞いてみたいこと
 }
 
@@ -59,7 +60,8 @@ const SYSTEM_PROMPT = `あなたはイベント参加者の「自己紹介カー
 読んだ人が「お、どういうことですか?」と思わず話しかけたくなる一文にする。
 
 作り方:
-- 入力全体(最近の挑戦・最近もやもやしていること)から、本人がこのイベントで何を持ち帰りたいか・何を目指しているかを見つける
+- 「このイベントで得るべきこと」が入力されていれば、それを◯◯の最有力候補として最優先で使う
+- それも踏まえて入力全体(最近の挑戦・最近もやもやしていること)から、本人がこのイベントで何を持ち帰りたいか・何を目指しているかを見つける
 - 「◯◯するために」の◯◯には、具体的な目標・挑戦・決意を入れる。入力に登場する具体名詞(サービス名・行動・場所など)があれば1つ入れると引っかかりが出る
 - 表現は前向き・宣言・決意・目標などその人の入力に最も合う形を選ぶ。「何かを諦める/手放す」という言い回しに寄せる必要はない(あくまで一つの表現パターンに過ぎない)
 
@@ -80,6 +82,14 @@ const SYSTEM_PROMPT = `あなたはイベント参加者の「自己紹介カー
 
 すべて日本語。本人がそのまま使える文章にする。`;
 
+const MAX_GENERATIONS_PER_IP = 5;
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
+
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
@@ -97,15 +107,37 @@ export async function POST(req: Request) {
 
   const { input } = body;
 
+  // 同一IPからの生成回数を制限 (API料金の際限ない増加を防ぐ)
+  const supabase = getSupabase();
+  const ip = getClientIp(req);
+  if (supabase) {
+    const { count, error: countError } = await supabase
+      .from("generate_calls")
+      .select("id", { count: "exact", head: true })
+      .eq("ip", ip);
+    if (!countError && (count ?? 0) >= MAX_GENERATIONS_PER_IP) {
+      return NextResponse.json(
+        {
+          error: `生成回数の上限(${MAX_GENERATIONS_PER_IP}回)に達しました。しばらく経ってからもう一度お試しください。`,
+        },
+        { status: 429 }
+      );
+    }
+    await supabase.from("generate_calls").insert({ ip });
+  }
+
   const challengeOverthinkSection =
     input.mode === "ai"
-      ? `## 普段使っているAIに聞いた回答 (最近の挑戦・最近もやもやしていることを含む)
+      ? `## 普段使っているAIに聞いた回答 (最近の挑戦・最近もやもやしていること・このイベントで得るべきことを含む)
 ${input.aiRaw || "(未入力)"}`
       : `## 最近やった新しい挑戦 (人に驚かれたことでもOK)
 ${input.challenge || "(未入力)"}
 
 ## 最近もやもやしていること
-${input.overthink || "(未入力)"}`;
+${input.overthink || "(未入力)"}
+
+## このイベントで得るべきこと (タイトル生成の最優先材料)
+${input.eventGoal || "(未入力)"}`;
 
   const userPrompt = `以下がユーザーの回答です。
 
@@ -174,7 +206,6 @@ ${input.askSomething || "(未入力)"}
   let participantId = body.participantId ?? null;
   let saveWarning: string | null = null;
 
-  const supabase = getSupabase();
   if (supabase) {
     const row = {
       event_id: body.eventId,

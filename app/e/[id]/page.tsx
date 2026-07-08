@@ -13,6 +13,7 @@ const emptyInput: PrepInput = {
   aiRaw: "",
   challenge: "",
   overthink: "",
+  eventGoal: "",
   askSomething: "",
 };
 
@@ -164,9 +165,10 @@ export default function EventPrep() {
 
   const aiInstruction = `私は${event?.name ?? "交流会イベント"}(${
     event?.detail ?? ""
-  })に参加します。これまでの私とのやり取りや記憶をふまえて、次の2点を深堀りして、各2〜3文で教えてください。
+  })に参加します。これまでの私とのやり取りや記憶をふまえて、次の3点を深堀りして、各2〜3文で教えてください。
 (1) 私が最近挑戦したこと(人に驚かれたこと・笑われたことでもOK。小さなことで構いません)
 (2) 私が最近もやもやしていること(迷っていること・気になっていること・引っかかっていることなど)
+(3) 私がこのイベントで得るべきこと(達成したい目標や持ち帰りたい知見)
 ※回答には、実名・住所・勤務先・具体的な人名など、個人を特定できる情報は含めないでください。`;
 
   const [copiedAi, setCopiedAi] = useState(false);
@@ -182,11 +184,14 @@ export default function EventPrep() {
       : step === 1
       ? input.mode === "ai"
         ? input.aiRaw.trim().length > 0
-        : input.challenge.trim().length > 0 && input.overthink.trim().length > 0
+        : input.challenge.trim().length > 0 &&
+          input.overthink.trim().length > 0 &&
+          input.eventGoal.trim().length > 0
       : input.askSomething.trim().length > 0;
 
   const generate = async () => {
     if (!event) return;
+    const hadResult = result !== null;
     setPhase("loading");
     setError(null);
     setWarning(null);
@@ -215,7 +220,8 @@ export default function EventPrep() {
       setPhase("result");
     } catch (e) {
       setError(e instanceof Error ? e.message : "通信に失敗しました");
-      setPhase("form");
+      // 「もう一度生成する」からの失敗時は、直前の結果を残したまま結果画面にとどまる
+      setPhase(hadResult ? "result" : "form");
     }
   };
 
@@ -263,7 +269,7 @@ export default function EventPrep() {
     return (
       <main className="container">
         <header className="header">
-          <h1>🎒 イベント準備キット</h1>
+          <h1>🌱 たねまき</h1>
         </header>
         <div className="error-box">{eventError}</div>
       </main>
@@ -273,7 +279,7 @@ export default function EventPrep() {
   return (
     <main className="container">
       <header className="header">
-        <h1>🎒 イベント準備キット</h1>
+        <h1>🌱 たねまき</h1>
         {event ? (
           <p>
             {event.name} — {event.detail}
@@ -359,7 +365,7 @@ export default function EventPrep() {
 
             {step === 1 && (
               <>
-                <h2>最近の挑戦 & 最近もやもやしていること</h2>
+                <h2>最近の挑戦 & もやもや & 得るべきこと</h2>
                 <p className="step-hint">
                   普段使っているAI (ChatGPT・Claude・Geminiなど)
                   に聞くと、自分で考えるより早く&深く言語化できます。AIを使わない場合は直接入力してください
@@ -416,6 +422,14 @@ export default function EventPrep() {
                         value={input.overthink}
                         placeholder="例: 安定した復職か、自分の事業への飛び込みか、決めきれていない"
                         onChange={(e) => update("overthink", e.target.value)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>このイベントで得るべきこと</label>
+                      <textarea
+                        value={input.eventGoal}
+                        placeholder="例: 自分の事業を軌道に乗せるための、具体的な次の一歩"
+                        onChange={(e) => update("eventGoal", e.target.value)}
                       />
                     </div>
                   </>
@@ -486,6 +500,8 @@ export default function EventPrep() {
           <p className="step-hint" style={{ textAlign: "center", marginBottom: 12 }}>
             ✏️ をタップすると自分の言葉に編集できます
           </p>
+
+          {error && <div className="error-box">{error}</div>}
 
           <div className="intro-card">
             {/* ① プロフィール */}
@@ -560,7 +576,7 @@ export default function EventPrep() {
                     className="btn-primary btn-link"
                     style={{ flex: 1 }}
                     href={shareImg}
-                    download="event-prep-card.png"
+                    download="tanemaki-card.png"
                   >
                     画像をダウンロード
                   </a>
@@ -573,14 +589,8 @@ export default function EventPrep() {
           </section>
 
           <div className="result-actions">
-            <button
-              className="btn-primary"
-              onClick={() => {
-                setPhase("form");
-                setStep(0);
-              }}
-            >
-              入力を編集してもう一度生成する
+            <button className="btn-primary" onClick={generate}>
+              🔁 もう一度生成する
             </button>
           </div>
         </>
