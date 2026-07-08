@@ -123,7 +123,7 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
   // ③④⑤ の各行
   const sections: { label: string; text: string }[] = [
     { label: "🔥 最近の挑戦", text: data.challengeLine },
-    { label: "💭 ふとした瞬間に", text: data.overthinkLine },
+    { label: "💭 最近もやもやしていること", text: data.overthinkLine },
     { label: "🙋 聞いてみたいこと", text: data.questionLine },
   ];
 

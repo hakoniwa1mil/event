@@ -166,7 +166,7 @@ export default function EventPrep() {
     event?.detail ?? ""
   })に参加します。これまでの私とのやり取りや記憶をふまえて、次の2点を深堀りして、各2〜3文で教えてください。
 (1) 私が最近挑戦したこと(人に驚かれたこと・笑われたことでもOK。小さなことで構いません)
-(2) 私がふとした瞬間についつい考えてしまっていること(迷っていること・気になっていること・引っかかっていることなど)
+(2) 私が最近もやもやしていること(迷っていること・気になっていること・引っかかっていることなど)
 ※回答には、実名・住所・勤務先・具体的な人名など、個人を特定できる情報は含めないでください。`;
 
   const [copiedAi, setCopiedAi] = useState(false);
@@ -359,7 +359,7 @@ export default function EventPrep() {
 
             {step === 1 && (
               <>
-                <h2>最近の挑戦 & ふと考えていること</h2>
+                <h2>最近の挑戦 & 最近もやもやしていること</h2>
                 <p className="step-hint">
                   普段使っているAI (ChatGPT・Claude・Geminiなど)
                   に聞くと、自分で考えるより早く&深く言語化できます。AIを使わない場合は直接入力してください
@@ -411,10 +411,10 @@ export default function EventPrep() {
                       />
                     </div>
                     <div className="field">
-                      <label>ふとした瞬間に考えていること</label>
+                      <label>最近もやもやしていること</label>
                       <textarea
                         value={input.overthink}
-                        placeholder="例: 安定した復職か、自分の事業への飛び込みか"
+                        placeholder="例: 安定した復職か、自分の事業への飛び込みか、決めきれていない"
                         onChange={(e) => update("overthink", e.target.value)}
                       />
                     </div>
@@ -520,7 +520,7 @@ export default function EventPrep() {
 
             {/* ④ ふと考えること */}
             <div className="intro-line">
-              <p className="intro-label">💭 ふとした瞬間に</p>
+              <p className="intro-label">💭 最近もやもやしていること</p>
               <Editable
                 text={result.overthinkLine}
                 onSave={(v) => patchResult((r) => (r.overthinkLine = v))}
