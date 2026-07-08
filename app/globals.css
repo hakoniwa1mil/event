@@ -520,6 +520,42 @@ button.small {
   color: var(--ink);
 }
 
+/* ---- intro card (自己紹介カード) ---- */
+
+.intro-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 26px 22px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.intro-profile {
+  border: none;
+  padding: 0;
+  margin-bottom: 20px;
+}
+
+.intro-title .editable p {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.5;
+  color: var(--accent-dark);
+}
+
+.intro-line {
+  border-top: 1px solid var(--border);
+  margin-top: 18px;
+  padding-top: 14px;
+}
+
+.intro-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 4px;
+}
+
 /* ---- share image preview ---- */
 
 .share-preview img {

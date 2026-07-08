@@ -1,19 +1,19 @@
-// 生成結果をSNS投稿用の1枚画像 (1080x1350) にまとめる。ブラウザ側で実行
+// 自己紹介カードをSNS投稿用の1枚画像 (1080x1350) にする。ブラウザ側で実行
 
 export interface ShareImageData {
   eventName: string;
   xName: string;
   xId: string;
   icon: string | null; // data URL
-  hook: string;
-  takeawayStatement: string;
-  takeawayNote: string;
-  selfIntro: string;
+  purposeTitle: string;
+  challengeLine: string;
+  overthinkLine: string;
+  questionLine: string;
 }
 
 const W = 1080;
 const H = 1350;
-const PAD = 72;
+const PAD = 80;
 const FONT =
   '"Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif';
 
@@ -52,23 +52,6 @@ function wrapText(
   return lines;
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -87,7 +70,6 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
   // 背景
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
-  // 上部アクセントバー
   ctx.fillStyle = ACCENT;
   ctx.fillRect(0, 0, W, 14);
 
@@ -98,10 +80,10 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
   ctx.fillStyle = INK_SOFT;
   ctx.font = `600 30px ${FONT}`;
   ctx.fillText(`🎒 ${data.eventName}`, PAD, y + 30);
-  y += 76;
+  y += 84;
 
   // プロフィール行
-  const iconSize = 120;
+  const iconSize = 130;
   if (data.icon) {
     try {
       const img = await loadImage(data.icon);
@@ -120,73 +102,53 @@ export async function renderShareImage(data: ShareImageData): Promise<string> {
     ctx.arc(PAD + iconSize / 2, y + iconSize / 2, iconSize / 2, 0, Math.PI * 2);
     ctx.fill();
   }
-  const textX = PAD + iconSize + 32;
+  const textX = PAD + iconSize + 36;
   ctx.fillStyle = INK;
-  ctx.font = `700 46px ${FONT}`;
-  ctx.fillText(data.xName, textX, y + 52);
+  ctx.font = `700 50px ${FONT}`;
+  ctx.fillText(data.xName, textX, y + 58);
   ctx.fillStyle = INK_SOFT;
-  ctx.font = `400 32px ${FONT}`;
-  ctx.fillText(`@${data.xId}`, textX, y + 100);
-  y += iconSize + 56;
-
-  // キャッチフレーズ
-  ctx.fillStyle = ACCENT_DARK;
-  ctx.font = `700 54px ${FONT}`;
-  for (const line of wrapText(ctx, data.hook, contentW, 2)) {
-    ctx.fillText(line, PAD, y + 54);
-    y += 72;
-  }
-  y += 36;
-
-  // 持ち帰ること (ボックス)
-  ctx.font = `700 44px ${FONT}`;
-  const stLines = wrapText(ctx, data.takeawayStatement, contentW - 80, 3);
-  ctx.font = `400 30px ${FONT}`;
-  const noteLines = wrapText(ctx, data.takeawayNote, contentW - 80, 3);
-  const boxH = 60 + stLines.length * 62 + 16 + noteLines.length * 44 + 40;
-
-  ctx.fillStyle = ACCENT_PALE;
-  roundRect(ctx, PAD, y, contentW, boxH, 24);
-  ctx.fill();
-  ctx.strokeStyle = ACCENT;
-  ctx.lineWidth = 3;
-  roundRect(ctx, PAD, y, contentW, boxH, 24);
-  ctx.stroke();
-
-  let by = y + 60;
-  ctx.fillStyle = ACCENT_DARK;
-  ctx.font = `700 30px ${FONT}`;
-  ctx.fillText("🎯 このイベントで持ち帰ること", PAD + 40, by);
-  by += 62;
-  ctx.fillStyle = INK;
-  ctx.font = `700 44px ${FONT}`;
-  for (const line of stLines) {
-    ctx.fillText(line, PAD + 40, by);
-    by += 62;
-  }
-  by += 8;
-  ctx.fillStyle = INK_SOFT;
-  ctx.font = `400 30px ${FONT}`;
-  for (const line of noteLines) {
-    ctx.fillText(line, PAD + 40, by);
-    by += 44;
-  }
-  y += boxH + 56;
-
-  // 自己紹介
-  ctx.fillStyle = ACCENT_DARK;
-  ctx.font = `700 30px ${FONT}`;
-  ctx.fillText("🎤 自己紹介", PAD, y + 30);
-  y += 68;
-  ctx.fillStyle = INK;
   ctx.font = `400 34px ${FONT}`;
-  const maxIntroLines = Math.max(
-    2,
-    Math.floor((H - 120 - y) / 54) // フッター分を残して入るだけ
-  );
-  for (const line of wrapText(ctx, data.selfIntro, contentW, maxIntroLines)) {
-    ctx.fillText(line, PAD, y + 34);
-    y += 54;
+  ctx.fillText(`@${data.xId}`, textX, y + 108);
+  y += iconSize + 72;
+
+  // ② 目的タイトル (メインビジュアル)
+  ctx.fillStyle = ACCENT_DARK;
+  ctx.font = `800 58px ${FONT}`;
+  for (const line of wrapText(ctx, data.purposeTitle, contentW, 4)) {
+    ctx.fillText(line, PAD, y + 58);
+    y += 82;
+  }
+  y += 48;
+
+  // ③④⑤ の各行
+  const sections: { label: string; text: string }[] = [
+    { label: "🔥 最近の挑戦", text: data.challengeLine },
+    { label: "💭 ふとした瞬間に", text: data.overthinkLine },
+    { label: "🙋 聞いてみたいこと", text: data.questionLine },
+  ];
+
+  for (const sec of sections) {
+    // 区切り線
+    ctx.strokeStyle = "#e5e5e0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(PAD, y);
+    ctx.lineTo(W - PAD, y);
+    ctx.stroke();
+    y += 44;
+
+    ctx.fillStyle = ACCENT_DARK;
+    ctx.font = `700 30px ${FONT}`;
+    ctx.fillText(sec.label, PAD, y + 30);
+    y += 56;
+
+    ctx.fillStyle = INK;
+    ctx.font = `500 38px ${FONT}`;
+    for (const line of wrapText(ctx, sec.text, contentW, 3)) {
+      ctx.fillText(line, PAD, y + 38);
+      y += 58;
+    }
+    y += 32;
   }
 
   // フッター
