@@ -267,6 +267,23 @@ export default function EventPrep() {
     }
   };
 
+  const postToX = () => {
+    if (!shareImg || !result) return;
+    // Xはweb intent経由での画像の自動添付に対応していないため、画像をダウンロードしつつ
+    // 投稿画面を開く。ユーザーにはダウンロードした画像を手動で添付してもらう
+    const a = document.createElement("a");
+    a.href = shareImg;
+    a.download = "tanemaki-card.png";
+    a.click();
+
+    const text = `${result.purposeTitle}\n\n#那須に行くまでハッカソン @9ji2neru`;
+    window.open(
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
   if (eventError) {
     return (
       <main className="container">
@@ -567,13 +584,20 @@ export default function EventPrep() {
                 <p className="step-hint">
                   スマホは画像を長押しで保存できます。カードの文章を編集すると、この画像は自動的に無効になり、もう一度「画像を作成する」で最新の内容に作り直せます
                 </p>
+                <button className="btn-primary" style={{ width: "100%" }} onClick={postToX}>
+                  𝕏でポストする
+                </button>
+                <p className="step-hint">
+                  画像のダウンロードとポスト画面を同時に開きます。X
+                  は投稿文からの画像自動添付に対応していないため、開いたポスト画面にダウンロードした画像を貼り付けてください
+                </p>
                 <a
-                  className="btn-primary btn-link"
+                  className="btn-ghost btn-link"
                   style={{ width: "100%" }}
                   href={shareImg}
                   download="tanemaki-card.png"
                 >
-                  画像をダウンロード
+                  画像だけダウンロード
                 </a>
               </div>
             )}
