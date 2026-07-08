@@ -9,11 +9,11 @@ const emptyInput: PrepInput = {
   xName: "",
   xId: "",
   fromWhere: "",
+  mode: "ai",
+  aiRaw: "",
   challenge: "",
   overthink: "",
-  askWho: "",
-  askWhat: "",
-  aiSummary: "",
+  askSomething: "",
 };
 
 interface EventInfo {
@@ -22,94 +22,7 @@ interface EventInfo {
   detail: string;
 }
 
-interface Step {
-  label: string;
-  title: string;
-  hint: string;
-  optional?: boolean;
-  fields: {
-    key: keyof PrepInput;
-    label?: string;
-    placeholder: string;
-    multiline?: boolean;
-  }[];
-}
-
-const steps: Step[] = [
-  {
-    label: "STEP 1 / 6",
-    title: "あなたのプロフィール",
-    hint: "X (Twitter) の名前とIDを教えてください。アイコンもあると当日顔を覚えてもらいやすくなります",
-    fields: [
-      { key: "xName", label: "Xの名前", placeholder: "例: くじにねる" },
-      { key: "xId", label: "X ID (@は不要)", placeholder: "例: 9ji2neru" },
-    ],
-  },
-  {
-    label: "STEP 2 / 6",
-    title: "どこから来ますか?",
-    hint: "県名や街の名前でOK。遠くから来るほど良いネタになります",
-    fields: [
-      { key: "fromWhere", placeholder: "例: 山口" },
-    ],
-  },
-  {
-    label: "STEP 3 / 6",
-    title: "最近やった「新しい挑戦」は?",
-    hint: "人に驚かれたこと・笑われたことでもOK。小さなことで大丈夫です",
-    fields: [
-      {
-        key: "challenge",
-        placeholder: "例: フェリーの中で一人ハッカソンに挑戦した",
-        multiline: true,
-      },
-    ],
-  },
-  {
-    label: "STEP 4 / 6",
-    title: "いま「AかBか」で決めきれていないことは?",
-    hint: "「復職か起業か」「続けるかやめるか」のような二択で書くと簡単です。決めきれていないこと=このイベントで持ち帰るべき収穫の種。ここからカードのタイトルを導きます",
-    fields: [
-      {
-        key: "overthink",
-        placeholder: "例: 安定した復職か、自分の事業への飛び込みか",
-        multiline: true,
-      },
-    ],
-  },
-  {
-    label: "STEP 5 / 6",
-    title: "「この人にこれを聞いてみたい!」はありますか?",
-    hint: "登壇者でも「こんな活動をしている人」でもOK",
-    fields: [
-      {
-        key: "askWho",
-        label: "誰に",
-        placeholder: "例: たくろうさん、登壇者の方",
-      },
-      {
-        key: "askWhat",
-        label: "何を聞きたい?",
-        placeholder: "例: 受託ビジネスで顧客にイラっとすることはありますか?",
-        multiline: true,
-      },
-    ],
-  },
-  {
-    label: "STEP 6 / 6",
-    title: "AIにあなたのことを聞いてみよう(任意)",
-    hint: "普段使っているAI (ChatGPT・Claude・Geminiなど) に下の指示文を送り、返ってきた回答を貼り付けてください。あなたのことを知っているAIの分析が入ると、カードのタイトルが格段に濃くなります。スキップしてもOK",
-    optional: true,
-    fields: [
-      {
-        key: "aiSummary",
-        label: "AIからの回答",
-        placeholder: "AIの回答をここに貼り付け(スキップ可)",
-        multiline: true,
-      },
-    ],
-  },
-];
+const STEP_COUNT = 3;
 
 function Editable({
   text,
@@ -220,7 +133,7 @@ export default function EventPrep() {
     }
   };
 
-  const update = (key: keyof PrepInput, value: string) => {
+  const update = <K extends keyof PrepInput>(key: K, value: PrepInput[K]) => {
     const next = { ...input, [key]: value };
     setInput(next);
     persist({ input: next });
@@ -251,11 +164,9 @@ export default function EventPrep() {
 
   const aiInstruction = `私は${event?.name ?? "交流会イベント"}(${
     event?.detail ?? ""
-  })に参加します。この交流会で「自分の人生を前に進める収穫」を一つ持ち帰りたいです。これまでの私とのやり取りや記憶をふまえて、次の4点を各1〜2文で簡潔に教えてください。
-(1) 私が本当に達成したい最大の目標
-(2) その目標に対して、今の私が引っかかっている矛盾や遠回り
-(3) このイベントで私が「決めるべきこと」や「いったん手放すべきこと」
-(4) 初対面の人に驚かれそうな、私のエピソードや行動
+  })に参加します。これまでの私とのやり取りや記憶をふまえて、次の2点を深堀りして、各2〜3文で教えてください。
+(1) 私が最近挑戦したこと(人に驚かれたこと・笑われたことでもOK。小さなことで構いません)
+(2) 私がふとした瞬間についつい考えてしまっていること(迷っていること・気になっていること・引っかかっていることなど)
 ※回答には、実名・住所・勤務先・具体的な人名など、個人を特定できる情報は含めないでください。`;
 
   const [copiedAi, setCopiedAi] = useState(false);
@@ -265,10 +176,14 @@ export default function EventPrep() {
     setTimeout(() => setCopiedAi(false), 1500);
   };
 
-  const currentStep = steps[step];
   const currentFilled =
-    currentStep.optional ||
-    currentStep.fields.some((f) => input[f.key].trim().length > 0);
+    step === 0
+      ? input.xName.trim().length > 0 && input.xId.trim().length > 0
+      : step === 1
+      ? input.mode === "ai"
+        ? input.aiRaw.trim().length > 0
+        : input.challenge.trim().length > 0 && input.overthink.trim().length > 0
+      : input.askSomething.trim().length > 0;
 
   const generate = async () => {
     if (!event) return;
@@ -371,83 +286,161 @@ export default function EventPrep() {
       {phase === "form" && (
         <>
           <div className="progress">
-            {steps.map((_, i) => (
+            {Array.from({ length: STEP_COUNT }).map((_, i) => (
               <span key={i} className={i <= step ? "done" : ""} />
             ))}
           </div>
           <section className="step-card">
-            <span className="step-label">{currentStep.label}</span>
-            <h2>{currentStep.title}</h2>
-            <p className="step-hint">{currentStep.hint}</p>
+            <span className="step-label">STEP {step + 1} / {STEP_COUNT}</span>
 
             {step === 0 && (
-              <div className="icon-upload">
-                <button
-                  type="button"
-                  className="icon-preview"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  {icon ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={icon} alt="アイコン" />
-                  ) : (
-                    <span>＋</span>
-                  )}
-                </button>
-                <div>
-                  <p className="icon-label">アイコン画像</p>
-                  <p className="icon-hint">タップしてアップロード(任意)</p>
-                </div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) onIconSelected(f);
-                  }}
-                />
-              </div>
-            )}
-
-            {currentStep.optional && (
-              <div className="ai-box">
-                <p className="ai-box-label">📋 AIに送る指示文</p>
-                <p className="ai-box-text">{aiInstruction}</p>
-                <button className="btn-primary small" onClick={copyAiInstruction}>
-                  {copiedAi ? "コピーしました!" : "指示文をコピー"}
-                </button>
-              </div>
-            )}
-
-            {currentStep.fields.map((f) => (
-              <div className="field" key={f.key}>
-                {f.label && <label>{f.label}</label>}
-                {f.multiline ? (
-                  <textarea
-                    value={input[f.key]}
-                    placeholder={f.placeholder}
-                    onChange={(e) => update(f.key, e.target.value)}
+              <>
+                <h2>あなたのプロフィール</h2>
+                <p className="step-hint">
+                  X (Twitter) の名前とIDを教えてください。アイコン・出発地は任意です(あると当日顔を覚えてもらいやすくなります)
+                </p>
+                <div className="icon-upload">
+                  <button
+                    type="button"
+                    className="icon-preview"
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {icon ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={icon} alt="アイコン" />
+                    ) : (
+                      <span>＋</span>
+                    )}
+                  </button>
+                  <div>
+                    <p className="icon-label">アイコン画像</p>
+                    <p className="icon-hint">タップしてアップロード(任意)</p>
+                  </div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) onIconSelected(f);
+                    }}
                   />
-                ) : (
+                </div>
+                <div className="field">
+                  <label>Xの名前</label>
                   <input
                     type="text"
-                    value={input[f.key]}
-                    placeholder={f.placeholder}
-                    onChange={(e) => update(f.key, e.target.value)}
+                    value={input.xName}
+                    placeholder="例: くじにねる"
+                    onChange={(e) => update("xName", e.target.value)}
                   />
+                </div>
+                <div className="field">
+                  <label>X ID (@は不要)</label>
+                  <input
+                    type="text"
+                    value={input.xId}
+                    placeholder="例: 9ji2neru"
+                    onChange={(e) => update("xId", e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label>出発地 (任意)</label>
+                  <input
+                    type="text"
+                    value={input.fromWhere}
+                    placeholder="例: 山口"
+                    onChange={(e) => update("fromWhere", e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            {step === 1 && (
+              <>
+                <h2>最近の挑戦 & ふと考えていること</h2>
+                <p className="step-hint">
+                  普段使っているAI (ChatGPT・Claude・Geminiなど)
+                  に聞くと、自分で考えるより早く&深く言語化できます。AIを使わない場合は直接入力してください
+                </p>
+
+                <div className="mode-toggle">
+                  <button
+                    type="button"
+                    className={input.mode === "ai" ? "mode-btn active" : "mode-btn"}
+                    onClick={() => update("mode", "ai")}
+                  >
+                    🤖 AIに聞く
+                  </button>
+                  <button
+                    type="button"
+                    className={input.mode === "manual" ? "mode-btn active" : "mode-btn"}
+                    onClick={() => update("mode", "manual")}
+                  >
+                    ✍️ 自分で入力
+                  </button>
+                </div>
+
+                {input.mode === "ai" ? (
+                  <>
+                    <div className="ai-box">
+                      <p className="ai-box-label">📋 AIに送る指示文</p>
+                      <p className="ai-box-text">{aiInstruction}</p>
+                      <button className="btn-primary small" onClick={copyAiInstruction}>
+                        {copiedAi ? "コピーしました!" : "指示文をコピー"}
+                      </button>
+                    </div>
+                    <div className="field">
+                      <label>AIからの回答を貼り付け</label>
+                      <textarea
+                        value={input.aiRaw}
+                        placeholder="AIの回答をここに貼り付けてください"
+                        onChange={(e) => update("aiRaw", e.target.value)}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="field">
+                      <label>最近やった新しい挑戦</label>
+                      <textarea
+                        value={input.challenge}
+                        placeholder="例: フェリーの中で一人ハッカソンに挑戦した"
+                        onChange={(e) => update("challenge", e.target.value)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>ふとした瞬間に考えていること</label>
+                      <textarea
+                        value={input.overthink}
+                        placeholder="例: 安定した復職か、自分の事業への飛び込みか"
+                        onChange={(e) => update("overthink", e.target.value)}
+                      />
+                    </div>
+                  </>
                 )}
-              </div>
-            ))}
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <h2>みんなに聞いてみたいこと</h2>
+                <p className="step-hint">
+                  会場にいる誰にでも投げかけられる質問を1つ考えてください。当日の話しかけるきっかけになります
+                </p>
+                <div className="field">
+                  <textarea
+                    value={input.askSomething}
+                    placeholder="例: 受託ビジネスで顧客にイラっとすることはありますか?"
+                    onChange={(e) => update("askSomething", e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="nav">
-              {step > 0 && (
-                <button className="btn-ghost" onClick={() => setStep(step - 1)}>
-                  戻る
-                </button>
-              )}
-              {step < steps.length - 1 ? (
+              {step < STEP_COUNT - 1 ? (
                 <button
                   className="btn-primary"
                   disabled={!currentFilled}
@@ -462,6 +455,11 @@ export default function EventPrep() {
                   onClick={generate}
                 >
                   ✨ 自己紹介カードを生成する
+                </button>
+              )}
+              {step > 0 && (
+                <button className="btn-ghost" onClick={() => setStep(step - 1)}>
+                  戻る
                 </button>
               )}
             </div>

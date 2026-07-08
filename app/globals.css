@@ -397,6 +397,30 @@ button:disabled {
   font-size: 0.95rem;
 }
 
+/* ---- mode toggle (AIに聞く / 自分で入力) ---- */
+
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.mode-btn {
+  flex: 1;
+  background: var(--bg);
+  color: var(--ink-soft);
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+
+.mode-btn.active {
+  background: var(--accent-pale);
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
 /* ---- AI instruction box ---- */
 
 .ai-box {
